@@ -1196,39 +1196,6 @@ Rect.prototype.contains = function(x, y) {
 	gClient.setChannel(channel_id);
 	gClient.start();
 
-	// Add offline mode handling after gClient is initialized
-	function initOfflineHandling() {
-		function updateOnlineStatus() {
-			if (!navigator.onLine) {
-				document.body.classList.add('offline');
-				var statusDiv = document.createElement('div');
-				statusDiv.id = 'offline-status';
-				statusDiv.textContent = 'Offline mode';
-				document.body.appendChild(statusDiv);
-			} else {
-				document.body.classList.remove('offline');
-				var statusDiv = document.getElementById('offline-status');
-				if (statusDiv) statusDiv.remove();
-				
-				// Try to reconnect when we come back online
-				if (typeof gClient !== 'undefined' && gClient && !gClient.isConnected() && !gClient.isConnecting()) {
-					console.log("Attempting to reconnect...");
-					gClient.stop(); // Clean up any existing connection
-					gClient.start(); // Start fresh connection
-				}
-			}
-		}
-
-		window.addEventListener('online', updateOnlineStatus);
-		window.addEventListener('offline', updateOnlineStatus);
-		updateOnlineStatus(); // Initial check
-	}
-
-	// Initialize offline handling after everything is loaded
-	$(document).ready(function() {
-		initOfflineHandling();
-	});
-
 	// Setting status
 	(function() {
 		gClient.on("status", function(status) {
@@ -3160,6 +3127,12 @@ _gaq.push(['_setAllowAnchor', true]);
 window.addEventListener('load', function() {
     // Check if we're offline
     function updateOnlineStatus() {
+        // Ensure gClient is defined before using it
+        if (typeof window.gClient === 'undefined') {
+            console.warn('gClient not yet initialized');
+            return;
+        }
+
         if (!navigator.onLine) {
             document.body.classList.add('offline');
             var statusDiv = document.createElement('div');
@@ -3180,9 +3153,12 @@ window.addEventListener('load', function() {
         }
     }
 
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-    updateOnlineStatus(); // Initial check
+    // Delay checking online status to ensure gClient is initialized
+    setTimeout(function() {
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus(); // Initial check
+    }, 1000);
 });
 
 // Add a manual reconnect function
