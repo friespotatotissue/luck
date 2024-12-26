@@ -153,7 +153,6 @@ $(function() {
 
 
 
-
 	var TIMING_TARGET = 1000;
 
 
@@ -3125,14 +3124,28 @@ _gaq.push(['_setAllowAnchor', true]);
 
 // Add offline mode handling
 window.addEventListener('load', function() {
+    // Function to check and wait for gClient initialization
+    function waitForgClient(callback, maxAttempts = 10) {
+        let attempts = 0;
+        
+        function checkgClient() {
+            attempts++;
+            
+            if (typeof window.gClient !== 'undefined') {
+                callback();
+            } else if (attempts < maxAttempts) {
+                console.log(`Waiting for gClient initialization (Attempt ${attempts})...`);
+                setTimeout(checkgClient, 500);
+            } else {
+                console.error('Failed to initialize gClient after multiple attempts');
+            }
+        }
+        
+        checkgClient();
+    }
+
     // Check if we're offline
     function updateOnlineStatus() {
-        // Ensure gClient is defined before using it
-        if (typeof window.gClient === 'undefined') {
-            console.warn('gClient not yet initialized');
-            return;
-        }
-
         if (!navigator.onLine) {
             document.body.classList.add('offline');
             var statusDiv = document.createElement('div');
@@ -3153,12 +3166,12 @@ window.addEventListener('load', function() {
         }
     }
 
-    // Delay checking online status to ensure gClient is initialized
-    setTimeout(function() {
+    // Wait for gClient to be initialized before setting up event listeners
+    waitForgClient(function() {
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
         updateOnlineStatus(); // Initial check
-    }, 1000);
+    });
 });
 
 // Add a manual reconnect function
