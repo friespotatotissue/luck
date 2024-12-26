@@ -74,14 +74,16 @@ Client.prototype.connect = function() {
 	
 	// Determine if we need wss:// based on page protocol
 	let wsUri = this.uri;
-	if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-		wsUri = wsUri.replace('ws://', 'wss://');
+	if (typeof window !== 'undefined') {
+		if (wsUri.startsWith('ws://')) {
+			wsUri = wsUri.replace('ws://', 'wss://');
+		}
 	}
 	
 	if(typeof module !== "undefined") {
 		// nodejsicle
 		this.ws = new WebSocket(wsUri, {
-			"origin": "https://www.multiplayerpiano.com",
+			"origin": "https://luck-production.up.railway.app",
 			"user-agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.85 Safari/537.36"
 		});
 	} else {
