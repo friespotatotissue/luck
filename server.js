@@ -6,7 +6,7 @@ const http = require('http');
 // Create HTTP server
 const httpServer = http.createServer(app);
 
-// Initialize Socket.IO
+// Initialize Socket.IO with secure WebSocket configuration
 const io = require('socket.io')(httpServer, {
     cors: {
         origin: "*",
@@ -20,14 +20,27 @@ const io = require('socket.io')(httpServer, {
     allowEIO3: true,
     pingTimeout: 60000,
     pingInterval: 25000,
-    cookie: false
+    cookie: false,
+    // Add secure WebSocket configuration
+    handlePreflightRequest: (req, res) => {
+        res.writeHead(200, {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET,POST",
+            "Access-Control-Allow-Headers": "my-custom-header",
+            "Access-Control-Allow-Credentials": true
+        });
+        res.end();
+    }
 });
 
-// Enable CORS for Express
+// Enable CORS for Express with specific WebSocket headers
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    // Add WebSocket-specific headers
+    res.header('Sec-WebSocket-Protocol', 'websocket');
     next();
 });
 
@@ -50,7 +63,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Socket.IO connection handling
+// Socket.IO connection handling with error logging
 io.on('connection', (socket) => {
     console.log('A user connected to Socket.IO', socket.id);
 
@@ -90,10 +103,21 @@ io.on('connection', (socket) => {
     });
 });
 
+// Add error handling for the HTTP server
+httpServer.on('error', (error) => {
+    console.error('HTTP Server Error:', error);
+});
+
+// Add upgrade event handling for WebSocket
+httpServer.on('upgrade', (request, socket, head) => {
+    console.log('WebSocket upgrade request received');
+});
+
 const PORT = process.env.PORT || 8080;
 
-// Start the server
+// Start the server with error handling
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Server root directory: ${__dirname}`);
+    console.log(`WebSocket server is ready for WSS connections`);
 }); 
