@@ -17,9 +17,10 @@ function mixin(obj1, obj2) {
 };
 
 
-function Client(uri) {
+function Client(uri, options) {
 	EventEmitter.call(this);
 	this.uri = uri;
+	this.options = options || {};
 	this.ws = undefined;
 	this.serverTimeOffset = 0;
 	this.user = undefined;
@@ -80,18 +81,21 @@ Client.prototype.connect = function() {
 		}
 	}
 	
+	const wsOptions = {
+		...this.options,
+		origin: "https://luck-production.up.railway.app",
+		perMessageDeflate: false,
+		maxPayload: 100 * 1024 * 1024 // 100MB
+	};
+	
 	if(typeof module !== "undefined") {
 		// nodejsicle
-		this.ws = new WebSocket(wsUri, {
-			"origin": "https://luck-production.up.railway.app",
-			"user-agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.85 Safari/537.36",
-			"perMessageDeflate": false,
-			"maxPayload": 100 * 1024 * 1024 // 100MB
-		});
+		this.ws = new WebSocket(wsUri, wsOptions);
 	} else {
 		// browseroni
 		this.ws = new WebSocket(wsUri);
 	}
+	
 	var self = this;
 	this.ws.addEventListener("close", function(evt) {
 		self.user = undefined;
@@ -111,12 +115,13 @@ Client.prototype.connect = function() {
 		} else {
 			++self.connectionAttempts;
 		}
-		var ms_lut = [1000, 3000, 5000, 10000]; // More reasonable retry intervals
-		var idx = self.connectionAttempts;
-		if(idx >= ms_lut.length) idx = ms_lut.length - 1;
-		var ms = ms_lut[idx];
-		if (self.connectionAttempts < 5) { // Limit reconnection attempts
-			setTimeout(self.connect.bind(self), ms);
+		
+		if (self.options.reconnection && self.connectionAttempts < (self.options.reconnectionAttempts || 5)) {
+			const delay = Math.min(
+				(self.options.reconnectionDelay || 1000) * Math.pow(1.5, self.connectionAttempts),
+				self.options.reconnectionDelayMax || 5000
+			);
+			setTimeout(self.connect.bind(self), delay);
 		} else {
 			self.emit("status", "Connection failed. Please refresh the page.");
 		}

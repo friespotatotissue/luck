@@ -9,41 +9,42 @@ const httpServer = http.createServer(app);
 // Initialize Socket.IO with secure WebSocket configuration
 const io = require('socket.io')(httpServer, {
     cors: {
-        origin: "*",
+        origin: ["https://luck-production.up.railway.app", "http://localhost:8080"],
         methods: ["GET", "POST"],
         allowedHeaders: ["*"],
         credentials: true
     },
     path: '/socket.io/',
     serveClient: true,
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     allowEIO3: true,
     pingTimeout: 60000,
     pingInterval: 25000,
     connectTimeout: 45000,
     maxHttpBufferSize: 1e8,
-    cookie: false,
-    // Add secure WebSocket configuration
-    handlePreflightRequest: (req, res) => {
-        res.writeHead(200, {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET,POST",
-            "Access-Control-Allow-Headers": "my-custom-header",
-            "Access-Control-Allow-Credentials": true
-        });
-        res.end();
+    allowUpgrades: true,
+    perMessageDeflate: false,
+    httpCompression: true,
+    cookie: {
+        name: "io",
+        httpOnly: true,
+        secure: true
     }
 });
 
 // Enable CORS for Express with specific WebSocket headers
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
     res.header('Access-Control-Allow-Credentials', 'true');
-    // Add WebSocket-specific headers
-    res.header('Sec-WebSocket-Protocol', 'websocket');
-    next();
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
 });
 
 // Serve static files with proper MIME types and caching
