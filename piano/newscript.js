@@ -1182,20 +1182,19 @@ Rect.prototype.contains = function(x, y) {
 	// Ensure gClient is globally accessible
 	window.gClient = new Client("https://" + window.location.hostname, {
 		path: '/socket.io/',
-		transports: ['websocket'], // Prioritize WebSocket
+		transports: ['websocket', 'polling'], // Added polling as fallback
 		forceNew: true, // Force a new connection
 		reconnection: true,
-		reconnectionAttempts: 5, // Reduced reconnection attempts
+		reconnectionAttempts: 10, // Increased reconnection attempts
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
-		timeout: 20000, // Reduced timeout
+		timeout: 30000, // Increased timeout
 		secure: true,
 		rejectUnauthorized: false,
 		autoConnect: true,
 		// Add Railway specific configuration
 		port: wssport,
-		rememberUpgrade: true,
-		transports: ['websocket']
+		rememberUpgrade: true
 	});
 
 	// Enhanced channel joining logic
@@ -1277,7 +1276,10 @@ Rect.prototype.contains = function(x, y) {
 			console.log('Connection Error Details:', {
 				errorMessage: error.message,
 				errorName: error.name,
-				errorStack: error.stack
+				errorStack: error.stack,
+				hostname: window.location.hostname,
+				port: wssport,
+				currentTime: new Date().toISOString()
 			});
 
 			gClient.stop();
