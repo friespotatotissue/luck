@@ -73,7 +73,7 @@ class Room {
 }
 
 class Server {
-  constructor(port = 8080) {
+  constructor(port = process.env.PORT || 8080) {
     this.wss = new WebSocket.Server({ port });
     this.participants = new Map();
     this.rooms = new Map();

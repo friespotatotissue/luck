@@ -10,7 +10,39 @@
   "dependencies": {
     "ws": "^8.13.0"
   },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3"
+  },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.22",
+    "chokidar": "^3.6.0",
+    "debug": "^3.2.7",
+    "ignore-by-default": "^1.0.1",
+    "minimatch": "^3.1.2",
+    "pstree.remy": "^1.1.8",
+    "semver": "^5.7.2",
+    "simple-update-notifier": "^1.1.0",
+    "supports-color": "^5.5.0",
+    "touch": "^3.1.1",
+    "undefsafe": "^2.0.5",
+    "anymatch": "^3.1.3",
+    "braces": "^3.0.3",
+    "glob-parent": "^5.1.2",
+    "is-binary-path": "^2.1.0",
+    "is-glob": "^4.0.3",
+    "normalize-path": "^3.0.0",
+    "readdirp": "^3.6.0",
+    "picomatch": "^2.3.1",
+    "fill-range": "^7.1.1",
+    "to-regex-range": "^5.0.1",
+    "binary-extensions": "^2.3.0",
+    "is-extglob": "^2.1.1",
+    "brace-expansion": "^1.1.11",
+    "balanced-match": "^1.0.2",
+    "concat-map": "^0.0.1",
+    "semver-7": "npm:semver@^7.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
