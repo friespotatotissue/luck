@@ -3138,6 +3138,13 @@ window.addEventListener('load', function() {
             document.body.classList.remove('offline');
             var statusDiv = document.getElementById('offline-status');
             if (statusDiv) statusDiv.remove();
+            
+            // Try to reconnect when we come back online
+            if (gClient && !gClient.isConnected() && !gClient.isConnecting()) {
+                console.log("Attempting to reconnect...");
+                gClient.stop(); // Clean up any existing connection
+                gClient.start(); // Start fresh connection
+            }
         }
     }
 
@@ -3145,6 +3152,17 @@ window.addEventListener('load', function() {
     window.addEventListener('offline', updateOnlineStatus);
     updateOnlineStatus(); // Initial check
 });
+
+// Add a manual reconnect function
+window.reconnectClient = function() {
+    if (gClient) {
+        console.log("Manual reconnection attempt...");
+        gClient.stop(); // Clean up any existing connection
+        setTimeout(function() {
+            gClient.start(); // Start fresh connection
+        }, 1000);
+    }
+};
 
 // Add error handling for audio loading
 piano.audio.on('error', function(err) {
