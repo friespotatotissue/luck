@@ -1,22 +1,13 @@
 const express = require('express');
 const path = require('path');
 const app = express();
-const fs = require('fs');
 const http = require('http');
-const https = require('https');
 
 // Create HTTP server
 const httpServer = http.createServer(app);
 
-// Create HTTPS server if in production
-let httpsServer;
-if (process.env.NODE_ENV === 'production') {
-    // For Railway.app, we don't need to specify certificates as they handle SSL
-    httpsServer = https.createServer(app);
-}
-
-// Initialize Socket.IO with the appropriate server
-const io = require('socket.io')(process.env.NODE_ENV === 'production' ? httpsServer : httpServer, {
+// Initialize Socket.IO
+const io = require('socket.io')(httpServer, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"],
@@ -39,17 +30,6 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     next();
 });
-
-// Redirect HTTP to HTTPS in production
-if (process.env.NODE_ENV === 'production') {
-    app.use((req, res, next) => {
-        if (req.secure) {
-            next();
-        } else {
-            res.redirect('https://' + req.headers.host + req.url);
-        }
-    });
-}
 
 // Serve static files with proper MIME types and caching
 app.use(express.static(__dirname, {
@@ -111,22 +91,9 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 8080;
-const HTTPS_PORT = process.env.HTTPS_PORT || 443;
 
-// Start the appropriate server(s)
-if (process.env.NODE_ENV === 'production') {
-    // In production, start both HTTP and HTTPS servers
-    httpServer.listen(PORT, () => {
-        console.log(`HTTP Server running on port ${PORT}`);
-    });
-    
-    httpsServer.listen(HTTPS_PORT, () => {
-        console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
-    });
-} else {
-    // In development, just start HTTP server
-    httpServer.listen(PORT, () => {
-        console.log(`HTTP Server running on port ${PORT}`);
-        console.log(`Server root directory: ${__dirname}`);
-    });
-} 
+// Start the server
+httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Server root directory: ${__dirname}`);
+}); 
