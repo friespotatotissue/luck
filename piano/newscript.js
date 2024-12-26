@@ -1185,58 +1185,82 @@ Rect.prototype.contains = function(x, y) {
 		transports: ['websocket'], // Prioritize WebSocket
 		forceNew: true, // Force a new connection
 		reconnection: true,
-		reconnectionAttempts: 15, // Increase reconnection attempts
+		reconnectionAttempts: 5, // Reduced reconnection attempts
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
-		timeout: 30000, // Increased timeout
-		pingTimeout: 60000, // Increased ping timeout
-		pingInterval: 25000, // Matching server ping interval
+		timeout: 20000, // Reduced timeout
 		secure: true,
 		rejectUnauthorized: false,
-		autoConnect: true,
-		// Add more detailed connection parameters
-		query: {
-			EIO: 4, // Explicitly set Engine.IO version
-			transport: 'websocket'
+		autoConnect: true
+	});
+
+	// Enhanced connection and channel joining logic
+	(function() {
+		var channelJoinAttempts = 0;
+		var maxChannelJoinAttempts = 3;
+		var channelJoinTimeout;
+
+		function resetChannelJoin() {
+			channelJoinAttempts = 0;
+			if (channelJoinTimeout) {
+				clearTimeout(channelJoinTimeout);
+			}
 		}
-	});
 
-	// Enhanced connection error handling
-	gClient.on('connect', function() {
-		console.log('Socket.IO connection established successfully');
-	});
+		function attemptChannelJoin() {
+			if (channelJoinAttempts >= maxChannelJoinAttempts) {
+				console.error('Failed to join channel after multiple attempts');
+				gClient.stop();
+				return;
+			}
 
-	gClient.on('connect_error', function(error) {
-		console.error('Socket.IO connection error:', error);
-		// Additional fallback mechanism
-		setTimeout(() => {
-			console.log('Attempting reconnection after connect_error');
-			gClient.stop();
-			gClient.start();
-		}, 2000);
-	});
+			channelJoinAttempts++;
+			console.log(`Attempting to join channel (Attempt ${channelJoinAttempts}):`, channel_id);
 
-	gClient.on('disconnect', function(reason) {
-		console.warn('Socket.IO disconnected:', reason);
-		// Automatic reconnection attempt
-		setTimeout(() => {
-			console.log('Attempting reconnection after disconnect');
-			gClient.stop();
-			gClient.start();
-		}, 2000);
-	});
+			// Clear any existing timeout
+			if (channelJoinTimeout) {
+				clearTimeout(channelJoinTimeout);
+			}
 
-	// Add a timeout to force channel join or fallback
-	setTimeout(() => {
-		if (gClient.channel === undefined) {
-			console.error('Failed to join channel within timeout');
-			gClient.stop();
-			gClient.start();
+			// Set a timeout for channel joining
+			channelJoinTimeout = setTimeout(() => {
+				console.warn('Channel join timeout');
+				gClient.stop();
+				attemptChannelJoin();
+			}, 10000);
+
+			// Attempt to set channel
+			gClient.setChannel(channel_id);
 		}
-	}, 10000);
 
-	gClient.setChannel(channel_id);
-	gClient.start();
+		// Enhanced connection event handlers
+		gClient.on('connect', function() {
+			console.log('Socket.IO connection established successfully');
+			resetChannelJoin();
+			attemptChannelJoin();
+		});
+
+		gClient.on('connect_error', function(error) {
+			console.error('Socket.IO connection error:', error);
+			gClient.stop();
+		});
+
+		gClient.on('disconnect', function(reason) {
+			console.warn('Socket.IO disconnected:', reason);
+			resetChannelJoin();
+		});
+
+		// Add channel join event handler
+		gClient.on('ch', function(msg) {
+			console.log('Successfully joined channel:', msg.ch._id);
+			if (channelJoinTimeout) {
+				clearTimeout(channelJoinTimeout);
+			}
+		});
+
+		// Start the connection
+		gClient.start();
+	})();
 
 	// Offline mode handling
 	function setupOfflineMode() {
