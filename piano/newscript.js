@@ -1185,10 +1185,12 @@ Rect.prototype.contains = function(x, y) {
 		transports: ['websocket'], // Prioritize WebSocket
 		forceNew: true, // Force a new connection
 		reconnection: true,
-		reconnectionAttempts: 10, // Increase reconnection attempts
+		reconnectionAttempts: 15, // Increase reconnection attempts
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
-		timeout: 20000,
+		timeout: 30000, // Increased timeout
+		pingTimeout: 60000, // Increased ping timeout
+		pingInterval: 25000, // Matching server ping interval
 		secure: true,
 		rejectUnauthorized: false,
 		autoConnect: true,
@@ -1199,18 +1201,39 @@ Rect.prototype.contains = function(x, y) {
 		}
 	});
 
-	// Add more detailed connection logging
+	// Enhanced connection error handling
 	gClient.on('connect', function() {
 		console.log('Socket.IO connection established successfully');
 	});
 
 	gClient.on('connect_error', function(error) {
 		console.error('Socket.IO connection error:', error);
+		// Additional fallback mechanism
+		setTimeout(() => {
+			console.log('Attempting reconnection after connect_error');
+			gClient.stop();
+			gClient.start();
+		}, 2000);
 	});
 
 	gClient.on('disconnect', function(reason) {
 		console.warn('Socket.IO disconnected:', reason);
+		// Automatic reconnection attempt
+		setTimeout(() => {
+			console.log('Attempting reconnection after disconnect');
+			gClient.stop();
+			gClient.start();
+		}, 2000);
 	});
+
+	// Add a timeout to force channel join or fallback
+	setTimeout(() => {
+		if (gClient.channel === undefined) {
+			console.error('Failed to join channel within timeout');
+			gClient.stop();
+			gClient.start();
+		}
+	}, 10000);
 
 	gClient.setChannel(channel_id);
 	gClient.start();
