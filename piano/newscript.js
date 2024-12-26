@@ -1183,17 +1183,36 @@ Rect.prototype.contains = function(x, y) {
 	window.gClient = new Client("wss://" + window.location.hostname + "/socket.io/", {
 		path: '/socket.io/',
 		transports: ['websocket'], // Prioritize WebSocket
-		upgrade: false, // Disable upgrade to prevent falling back to polling
-		secure: true,
-		rejectUnauthorized: false,
+		forceNew: true, // Force a new connection
 		reconnection: true,
-		reconnectionAttempts: 5,
+		reconnectionAttempts: 10, // Increase reconnection attempts
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
 		timeout: 20000,
-		autoConnect: true
+		upgrade: false, // Disable upgrade to prevent falling back to polling
+		secure: true,
+		rejectUnauthorized: false,
+		autoConnect: true,
+		// Add more detailed connection parameters
+		query: {
+			EIO: 4, // Explicitly set Engine.IO version
+			transport: 'websocket'
+		}
 	});
-	gClient = window.gClient; // Ensure it's also accessible without window prefix
+
+	// Add more detailed connection logging
+	gClient.on('connect', function() {
+		console.log('Socket.IO connection established successfully');
+	});
+
+	gClient.on('connect_error', function(error) {
+		console.error('Socket.IO connection error:', error);
+	});
+
+	gClient.on('disconnect', function(reason) {
+		console.warn('Socket.IO disconnected:', reason);
+	});
+
 	gClient.setChannel(channel_id);
 	gClient.start();
 
