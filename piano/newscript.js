@@ -1211,7 +1211,7 @@ Rect.prototype.contains = function(x, y) {
 				if (statusDiv) statusDiv.remove();
 				
 				// Try to reconnect when we come back online
-				if (gClient && !gClient.isConnected() && !gClient.isConnecting()) {
+				if (typeof gClient !== 'undefined' && gClient && !gClient.isConnected() && !gClient.isConnecting()) {
 					console.log("Attempting to reconnect...");
 					gClient.stop(); // Clean up any existing connection
 					gClient.start(); // Start fresh connection
