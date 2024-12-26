@@ -3068,3 +3068,32 @@ _gaq.push(['_setAllowAnchor', true]);
 		adsOn();
 	}
 })();*/
+
+// Add offline mode handling
+window.addEventListener('load', function() {
+    // Check if we're offline
+    function updateOnlineStatus() {
+        if (!navigator.onLine) {
+            document.body.classList.add('offline');
+            var statusDiv = document.createElement('div');
+            statusDiv.id = 'offline-status';
+            statusDiv.textContent = 'Offline mode';
+            document.body.appendChild(statusDiv);
+        } else {
+            document.body.classList.remove('offline');
+            var statusDiv = document.getElementById('offline-status');
+            if (statusDiv) statusDiv.remove();
+        }
+    }
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus(); // Initial check
+});
+
+// Add error handling for audio loading
+piano.audio.on('error', function(err) {
+    console.error('Audio loading error:', err);
+    // Try to reload with default sound path
+    gSoundPath = "/piano/audio/default/";
+});
