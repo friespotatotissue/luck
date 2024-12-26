@@ -71,15 +71,22 @@ Client.prototype.connect = function() {
 	if(!this.canConnect || !this.isSupported() || this.isConnected() || this.isConnecting())
 		return;
 	this.emit("status", "Connecting...");
+	
+	// Determine if we need wss:// based on page protocol
+	let wsUri = this.uri;
+	if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+		wsUri = wsUri.replace('ws://', 'wss://');
+	}
+	
 	if(typeof module !== "undefined") {
 		// nodejsicle
-		this.ws = new WebSocket(this.uri, {
-      "origin": "http://www.multiplayerpiano.com",
-      "user-agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.85 Safari/537.36"
+		this.ws = new WebSocket(wsUri, {
+			"origin": "https://www.multiplayerpiano.com",
+			"user-agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.85 Safari/537.36"
 		});
 	} else {
 		// browseroni
-		this.ws = new WebSocket(this.uri);
+		this.ws = new WebSocket(wsUri);
 	}
 	var self = this;
 	this.ws.addEventListener("close", function(evt) {

@@ -1082,7 +1082,7 @@ Rect.prototype.contains = function(x, y) {
 
 	// Update press function to emit socket event
 	function press(id, vol) {
-		if(!gClient.preventsPlaying() && gNoteQuota.spend(1)) {
+		if(!gClient.preventsPlaying() && (!gNoteQuota || gNoteQuota.spend(1))) {
 			gHeldNotes[id] = true;
 			gSustainedNotes[id] = true;
 			gPiano.play(id, vol !== undefined ? vol : DEFAULT_VELOCITY, gClient.getOwnParticipant(), 0);
