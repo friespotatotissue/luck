@@ -701,11 +701,11 @@ Rect.prototype.contains = function(x, y) {
 		this.keyMovement = Math.floor(this.whiteKeyHeight * 0.015);
 
 		this.whiteBlipWidth = Math.floor(this.whiteKeyWidth * 0.7);
-		this.whiteBlipHeight = Math.floor(this.whiteBlipWidth * 0.8);
+		this.whiteBlipHeight = Math.floor(this.whiteBlipWidth * 0.6);
 		this.whiteBlipX = Math.floor((this.whiteKeyWidth - this.whiteBlipWidth) / 2);
 		this.whiteBlipY = Math.floor(this.whiteKeyHeight - this.whiteBlipHeight * 1.2);
 		this.blackBlipWidth = Math.floor(this.blackKeyWidth * 0.7);
-		this.blackBlipHeight = Math.floor(this.blackBlipWidth * 0.8);
+		this.blackBlipHeight = Math.floor(this.blackBlipWidth * 0.6);
 		this.blackBlipY = Math.floor(this.blackKeyHeight - this.blackBlipHeight * 1.2);
 		this.blackBlipX = Math.floor((this.blackKeyWidth - this.blackBlipWidth) / 2);
 		
@@ -716,17 +716,17 @@ Rect.prototype.contains = function(x, y) {
 		var ctx = this.whiteKeyRender.getContext("2d");
 		if(ctx.createLinearGradient) {
 			var gradient = ctx.createLinearGradient(0, 0, 0, this.whiteKeyHeight);
-			gradient.addColorStop(0, "#eee");
-			gradient.addColorStop(0.75, "#fff");
-			gradient.addColorStop(1, "#dad4d4");
+			gradient.addColorStop(0, "#ffff00");
+			gradient.addColorStop(0.75, "#ffff00");
+			gradient.addColorStop(1, "#ffff00");
 			ctx.fillStyle = gradient;
 		} else {
-			ctx.fillStyle = "#fff";
+			ctx.fillStyle = "#ffff00";
 		}
 		ctx.strokeStyle = "#000";
-		ctx.lineJoin = "round";
-		ctx.lineCap = "round";
-		ctx.lineWidth = 10;
+		ctx.lineJoin = "square";
+		ctx.lineCap = "sqaure";
+		ctx.lineWidth = 5;
 		ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, this.whiteKeyWidth - ctx.lineWidth, this.whiteKeyHeight - ctx.lineWidth);
 		ctx.lineWidth = 4;
 		ctx.fillRect(ctx.lineWidth / 2, ctx.lineWidth / 2, this.whiteKeyWidth - ctx.lineWidth, this.whiteKeyHeight - ctx.lineWidth);
@@ -738,18 +738,18 @@ Rect.prototype.contains = function(x, y) {
 		var ctx = this.blackKeyRender.getContext("2d");
 		if(ctx.createLinearGradient) {
 			var gradient = ctx.createLinearGradient(0, 0, 0, this.blackKeyHeight);
-			gradient.addColorStop(0, "#000");
-			gradient.addColorStop(1, "#444");
+			gradient.addColorStop(0, "#551a8b");
+			gradient.addColorStop(1, "#551a8b");
 			ctx.fillStyle = gradient;
 		} else {
-			ctx.fillStyle = "#000";
+			ctx.fillStyle = "#551a8b";
 		}
 		ctx.strokeStyle = "#222";
-		ctx.lineJoin = "round";
-		ctx.lineCap = "round";
-		ctx.lineWidth = 8;
-		ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, this.blackKeyWidth - ctx.lineWidth, this.blackKeyHeight - ctx.lineWidth);
+		ctx.lineJoin = "square";
+		ctx.lineCap = "sqaure";
 		ctx.lineWidth = 4;
+		ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, this.blackKeyWidth - ctx.lineWidth, this.blackKeyHeight - ctx.lineWidth);
+		ctx.lineWidth = 2;
 		ctx.fillRect(ctx.lineWidth / 2, ctx.lineWidth / 2, this.blackKeyWidth - ctx.lineWidth, this.blackKeyHeight - ctx.lineWidth);
 
 		// prerender shadows
@@ -762,8 +762,8 @@ Rect.prototype.contains = function(x, y) {
 			canvas.height = this.canvas.height;
 			var ctx = canvas.getContext("2d");
 			var sharp = j ? true : false;
-			ctx.lineJoin = "round";
-			ctx.lineCap = "round";
+			ctx.lineJoin = "sqaure";
+			ctx.lineCap = "sqaure";
 			ctx.lineWidth = 1;
 			ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
 			ctx.shadowBlur = this.keyMovement * 3;
@@ -807,7 +807,7 @@ Rect.prototype.contains = function(x, y) {
 
 	CanvasRenderer.prototype.visualize = function(key, color) {
 		key.timePlayed = Date.now();
-		key.blips.push({"time": key.timePlayed, "color": color});
+		key.blips.push({"time": key.timePlayed, "color": "#ff0000"});
 	};
 
 	CanvasRenderer.prototype.redraw = function() {
@@ -1077,21 +1077,15 @@ Rect.prototype.contains = function(x, y) {
 	var gSustainedNotes = {};
 	
 
-	// Initialize Socket.IO client
-	const socket = io();
-
-	// Update press function to emit socket event
 	function press(id, vol) {
-		if(!gClient.preventsPlaying() && (!gNoteQuota || gNoteQuota.spend(1))) {
+		if(!gClient.preventsPlaying() && gNoteQuota.spend(1)) {
 			gHeldNotes[id] = true;
 			gSustainedNotes[id] = true;
 			gPiano.play(id, vol !== undefined ? vol : DEFAULT_VELOCITY, gClient.getOwnParticipant(), 0);
-			socket.emit('keyPress', { note: id, velocity: vol !== undefined ? vol : DEFAULT_VELOCITY });
 			gClient.startNote(id, vol);
 		}
 	}
 
-	// Update release function to emit socket event
 	function release(id) {
 		if(gHeldNotes[id]) {
 			gHeldNotes[id] = false;
@@ -1100,7 +1094,6 @@ Rect.prototype.contains = function(x, y) {
 			} else {
 				if(gNoteQuota.spend(1)) {
 					gPiano.stop(id, gClient.getOwnParticipant(), 0);
-					socket.emit('keyRelease', { note: id });
 					gClient.stopNote(id);
 					gSustainedNotes[id] = false;
 				}
@@ -1108,16 +1101,12 @@ Rect.prototype.contains = function(x, y) {
 		}
 	}
 
-	// Update pressSustain function to emit socket event
 	function pressSustain() {
 		gSustain = true;
-		socket.emit('sustain', true);
 	}
 
-	// Update releaseSustain function to emit socket event
 	function releaseSustain() {
 		gSustain = false;
-		socket.emit('sustain', false);
 		if(!gAutoSustain) {
 			for(var id in gSustainedNotes) {
 				if(gSustainedNotes.hasOwnProperty(id) && gSustainedNotes[id] && !gHeldNotes[id]) {
@@ -1130,37 +1119,6 @@ Rect.prototype.contains = function(x, y) {
 			}
 		}
 	}
-
-	// Handle incoming socket events
-	socket.on('keyPressed', (data) => {
-		if(gNoteQuota.spend(1)) {
-			gPiano.play(data.note, data.velocity, gClient.getOwnParticipant(), 0);
-		}
-	});
-
-	socket.on('keyReleased', (data) => {
-		if(gNoteQuota.spend(1)) {
-			gPiano.stop(data.note, gClient.getOwnParticipant(), 0);
-		}
-	});
-
-	socket.on('sustainChange', (isPressed) => {
-		if(isPressed) {
-			gSustain = true;
-		} else {
-			gSustain = false;
-			if(!gAutoSustain) {
-				for(var id in gSustainedNotes) {
-					if(gSustainedNotes.hasOwnProperty(id) && gSustainedNotes[id] && !gHeldNotes[id]) {
-						gSustainedNotes[id] = false;
-						if(gNoteQuota.spend(1)) {
-							gPiano.stop(id, gClient.getOwnParticipant(), 0);
-						}
-					}
-				}
-			}
-		}
-	});
 
 
 
@@ -1178,56 +1136,11 @@ Rect.prototype.contains = function(x, y) {
 	if(channel_id.substr(0, 1) == "/") channel_id = channel_id.substr(1);
 	if(channel_id == "") channel_id = "lobby";
 
-	var wssport = window.location.hostname == "luck-production.up.railway.app" ? 443 : 8080;
-	var gClient = new Client("wss://" + window.location.hostname + "/socket.io/", {
-		path: '/socket.io/',
-		transports: ['websocket', 'polling'],
-		upgrade: true,
-		rememberUpgrade: true,
-		secure: true,
-		rejectUnauthorized: false,
-		reconnection: true,
-		reconnectionAttempts: 5,
-		reconnectionDelay: 1000,
-		reconnectionDelayMax: 5000,
-		timeout: 20000,
-		autoConnect: true
-	});
+	var wssport = window.location.hostname == "www.multiplayerpiano.com" ? 443 : 8080;
+	var gClient = new Client("ws://" + window.location.hostname + ":" + wssport);
 	gClient.setChannel(channel_id);
 	gClient.start();
 
-	// Add offline mode handling after gClient is initialized
-	function initOfflineHandling() {
-		function updateOnlineStatus() {
-			if (!navigator.onLine) {
-				document.body.classList.add('offline');
-				var statusDiv = document.createElement('div');
-				statusDiv.id = 'offline-status';
-				statusDiv.textContent = 'Offline mode';
-				document.body.appendChild(statusDiv);
-			} else {
-				document.body.classList.remove('offline');
-				var statusDiv = document.getElementById('offline-status');
-				if (statusDiv) statusDiv.remove();
-				
-				// Try to reconnect when we come back online
-				if (gClient && !gClient.isConnected() && !gClient.isConnecting()) {
-					console.log("Attempting to reconnect...");
-					gClient.stop(); // Clean up any existing connection
-					gClient.start(); // Start fresh connection
-				}
-			}
-		}
-
-		window.addEventListener('online', updateOnlineStatus);
-		window.addEventListener('offline', updateOnlineStatus);
-		updateOnlineStatus(); // Initial check
-	}
-
-	// Initialize offline handling after everything is loaded
-	$(document).ready(function() {
-		initOfflineHandling();
-	});
 
 	// Setting status
 	(function() {
@@ -1547,8 +1460,8 @@ Rect.prototype.contains = function(x, y) {
 
 	// Background color
 	(function() {
-		var old_color1 = new Color("#3b5054");
-		var old_color2 = new Color("#3b5054");
+		var old_color1 = new Color("#00ff00");
+		var old_color2 = new Color("#00ff00");
 		function setColor(hex) {
 			var color1 = new Color(hex);
 			var color2 = new Color(hex);
@@ -1581,14 +1494,14 @@ Rect.prototype.contains = function(x, y) {
 			}, step_ms);
 		}
 
-		setColor("#3b5054");
+		setColor("#00ff00");
 
 		gClient.on("ch", function(ch) {
 			if(ch.ch.settings) {
 				if(ch.ch.settings.color) {
-					setColor(ch.ch.settings.color);
+					setColor("#00ff00");
 				} else {
-					setColor("#3b5054");
+					setColor("#00ff00");
 				}
 			}
 		});
@@ -2117,8 +2030,7 @@ Rect.prototype.contains = function(x, y) {
 
 	$("#room > .info").text("--");
 	gClient.on("ch", function(msg) {
-    var channel = msg.ch;
-    if (!channel._id.includes("original")) return location.reload();
+		var channel = msg.ch;
 		var info = $("#room > .info");
 		info.text(channel._id);
 		if(channel.settings.lobby) info.addClass("lobby");
@@ -3155,50 +3067,3 @@ _gaq.push(['_setAllowAnchor', true]);
 		adsOn();
 	}
 })();*/
-
-// Add offline mode handling
-window.addEventListener('load', function() {
-    // Check if we're offline
-    function updateOnlineStatus() {
-        if (!navigator.onLine) {
-            document.body.classList.add('offline');
-            var statusDiv = document.createElement('div');
-            statusDiv.id = 'offline-status';
-            statusDiv.textContent = 'Offline mode';
-            document.body.appendChild(statusDiv);
-        } else {
-            document.body.classList.remove('offline');
-            var statusDiv = document.getElementById('offline-status');
-            if (statusDiv) statusDiv.remove();
-            
-            // Try to reconnect when we come back online
-            if (gClient && !gClient.isConnected() && !gClient.isConnecting()) {
-                console.log("Attempting to reconnect...");
-                gClient.stop(); // Clean up any existing connection
-                gClient.start(); // Start fresh connection
-            }
-        }
-    }
-
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-    updateOnlineStatus(); // Initial check
-});
-
-// Add a manual reconnect function
-window.reconnectClient = function() {
-    if (gClient) {
-        console.log("Manual reconnection attempt...");
-        gClient.stop(); // Clean up any existing connection
-        setTimeout(function() {
-            gClient.start(); // Start fresh connection
-        }, 1000);
-    }
-};
-
-// Add error handling for audio loading
-piano.audio.on('error', function(err) {
-    console.error('Audio loading error:', err);
-    // Try to reload with default sound path
-    gSoundPath = "/piano/audio/default/";
-});
