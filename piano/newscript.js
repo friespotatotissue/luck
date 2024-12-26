@@ -1191,7 +1191,11 @@ Rect.prototype.contains = function(x, y) {
 		timeout: 20000, // Reduced timeout
 		secure: true,
 		rejectUnauthorized: false,
-		autoConnect: true
+		autoConnect: true,
+		// Add Railway specific configuration
+		port: wssport,
+		rememberUpgrade: true,
+		transports: ['websocket']
 	});
 
 	// Enhanced connection and channel joining logic
@@ -1243,6 +1247,22 @@ Rect.prototype.contains = function(x, y) {
 		gClient.on('connect_error', function(error) {
 			console.error('Socket.IO connection error:', error);
 			gClient.stop();
+		});
+
+		gClient.on('connect_timeout', function(timeout) {
+			console.warn('Socket.IO connection timeout:', timeout);
+		});
+
+		gClient.on('reconnect_attempt', function(attemptNumber) {
+			console.log('Socket.IO reconnection attempt:', attemptNumber);
+		});
+
+		gClient.on('reconnect_error', function(error) {
+			console.error('Socket.IO reconnection error:', error);
+		});
+
+		gClient.on('reconnect_failed', function() {
+			console.error('Socket.IO reconnection failed');
 		});
 
 		gClient.on('disconnect', function(reason) {
