@@ -1077,15 +1077,21 @@ Rect.prototype.contains = function(x, y) {
 	var gSustainedNotes = {};
 	
 
+	// Initialize Socket.IO client
+	const socket = io();
+
+	// Update press function to emit socket event
 	function press(id, vol) {
 		if(!gClient.preventsPlaying() && gNoteQuota.spend(1)) {
 			gHeldNotes[id] = true;
 			gSustainedNotes[id] = true;
 			gPiano.play(id, vol !== undefined ? vol : DEFAULT_VELOCITY, gClient.getOwnParticipant(), 0);
+			socket.emit('keyPress', { note: id, velocity: vol !== undefined ? vol : DEFAULT_VELOCITY });
 			gClient.startNote(id, vol);
 		}
 	}
 
+	// Update release function to emit socket event
 	function release(id) {
 		if(gHeldNotes[id]) {
 			gHeldNotes[id] = false;
@@ -1094,6 +1100,7 @@ Rect.prototype.contains = function(x, y) {
 			} else {
 				if(gNoteQuota.spend(1)) {
 					gPiano.stop(id, gClient.getOwnParticipant(), 0);
+					socket.emit('keyRelease', { note: id });
 					gClient.stopNote(id);
 					gSustainedNotes[id] = false;
 				}
@@ -1101,12 +1108,16 @@ Rect.prototype.contains = function(x, y) {
 		}
 	}
 
+	// Update pressSustain function to emit socket event
 	function pressSustain() {
 		gSustain = true;
+		socket.emit('sustain', true);
 	}
 
+	// Update releaseSustain function to emit socket event
 	function releaseSustain() {
 		gSustain = false;
+		socket.emit('sustain', false);
 		if(!gAutoSustain) {
 			for(var id in gSustainedNotes) {
 				if(gSustainedNotes.hasOwnProperty(id) && gSustainedNotes[id] && !gHeldNotes[id]) {
@@ -1119,6 +1130,37 @@ Rect.prototype.contains = function(x, y) {
 			}
 		}
 	}
+
+	// Handle incoming socket events
+	socket.on('keyPressed', (data) => {
+		if(gNoteQuota.spend(1)) {
+			gPiano.play(data.note, data.velocity, gClient.getOwnParticipant(), 0);
+		}
+	});
+
+	socket.on('keyReleased', (data) => {
+		if(gNoteQuota.spend(1)) {
+			gPiano.stop(data.note, gClient.getOwnParticipant(), 0);
+		}
+	});
+
+	socket.on('sustainChange', (isPressed) => {
+		if(isPressed) {
+			gSustain = true;
+		} else {
+			gSustain = false;
+			if(!gAutoSustain) {
+				for(var id in gSustainedNotes) {
+					if(gSustainedNotes.hasOwnProperty(id) && gSustainedNotes[id] && !gHeldNotes[id]) {
+						gSustainedNotes[id] = false;
+						if(gNoteQuota.spend(1)) {
+							gPiano.stop(id, gClient.getOwnParticipant(), 0);
+						}
+					}
+				}
+			}
+		}
+	});
 
 
 
