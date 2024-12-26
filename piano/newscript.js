@@ -1180,7 +1180,7 @@ Rect.prototype.contains = function(x, y) {
 	var wssport = window.location.hostname == "luck-production.up.railway.app" ? 443 : 8080;
 	
 	// Ensure gClient is globally accessible
-	window.gClient = new Client("wss://" + window.location.hostname + "/socket.io/", {
+	window.gClient = new Client("https://" + window.location.hostname, {
 		path: '/socket.io/',
 		transports: ['websocket'], // Prioritize WebSocket
 		forceNew: true, // Force a new connection
@@ -1189,7 +1189,6 @@ Rect.prototype.contains = function(x, y) {
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
 		timeout: 20000,
-		upgrade: false, // Disable upgrade to prevent falling back to polling
 		secure: true,
 		rejectUnauthorized: false,
 		autoConnect: true,
