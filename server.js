@@ -16,10 +16,12 @@ const io = require('socket.io')(httpServer, {
     },
     path: '/socket.io/',
     serveClient: true,
-    transports: ['websocket', 'polling'],
+    transports: ['websocket'],
     allowEIO3: true,
     pingTimeout: 60000,
     pingInterval: 25000,
+    connectTimeout: 45000,
+    maxHttpBufferSize: 1e8,
     cookie: false,
     // Add secure WebSocket configuration
     handlePreflightRequest: (req, res) => {

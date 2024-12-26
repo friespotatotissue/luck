@@ -84,7 +84,9 @@ Client.prototype.connect = function() {
 		// nodejsicle
 		this.ws = new WebSocket(wsUri, {
 			"origin": "https://luck-production.up.railway.app",
-			"user-agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.85 Safari/537.36"
+			"user-agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.85 Safari/537.36",
+			"perMessageDeflate": false,
+			"maxPayload": 100 * 1024 * 1024 // 100MB
 		});
 	} else {
 		// browseroni
@@ -102,18 +104,22 @@ Client.prototype.connect = function() {
 		self.emit("disconnect");
 		self.emit("status", "Offline mode");
 
-		// reconnect!
+		// Improved reconnection logic
 		if(self.connectionTime) {
 			self.connectionTime = undefined;
 			self.connectionAttempts = 0;
 		} else {
 			++self.connectionAttempts;
 		}
-		var ms_lut = [50, 2950, 7000, 10000];
+		var ms_lut = [1000, 3000, 5000, 10000]; // More reasonable retry intervals
 		var idx = self.connectionAttempts;
 		if(idx >= ms_lut.length) idx = ms_lut.length - 1;
 		var ms = ms_lut[idx];
-		setTimeout(self.connect.bind(self), ms);
+		if (self.connectionAttempts < 5) { // Limit reconnection attempts
+			setTimeout(self.connect.bind(self), ms);
+		} else {
+			self.emit("status", "Connection failed. Please refresh the page.");
+		}
 	});
 	this.ws.addEventListener("error", function() {
 		console.trace(arguments);
