@@ -1179,7 +1179,7 @@ Rect.prototype.contains = function(x, y) {
 	if(channel_id == "") channel_id = "lobby";
 
 	var wssport = window.location.hostname == "luck-production.up.railway.app" ? 443 : 8080;
-	var gClient = new Client("wss://" + window.location.hostname, {
+	var gClient = new Client("wss://" + window.location.hostname + "/socket.io/", {
 		path: '/socket.io/',
 		transports: ['websocket', 'polling'],
 		upgrade: true,

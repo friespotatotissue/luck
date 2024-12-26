@@ -1,7 +1,7 @@
 /* eslint-disable */
 if(typeof module !== "undefined") {
 	module.exports = Client;
-	WebSocket = require("ws");
+	io = require("socket.io-client");
 	EventEmitter = require("events").EventEmitter;
 } else {
 	this.Client = Client;
@@ -21,7 +21,7 @@ function Client(uri, options) {
 	EventEmitter.call(this);
 	this.uri = uri;
 	this.options = options || {};
-	this.ws = undefined;
+	this.socket = undefined;
 	this.serverTimeOffset = 0;
 	this.user = undefined;
 	this.participantId = undefined;
@@ -47,15 +47,15 @@ mixin(Client.prototype, EventEmitter.prototype);
 Client.prototype.constructor = Client;
 
 Client.prototype.isSupported = function() {
-	return typeof WebSocket === "function";
+	return typeof io === "function";
 };
 
 Client.prototype.isConnected = function() {
-	return this.isSupported() && this.ws && this.ws.readyState === WebSocket.OPEN;
+	return this.isSupported() && this.socket && this.socket.connected;
 };
 
 Client.prototype.isConnecting = function() {
-	return this.isSupported() && this.ws && this.ws.readyState === WebSocket.CONNECTING;
+	return this.isSupported() && this.socket && this.socket.connecting;
 };
 
 Client.prototype.start = function() {
@@ -65,7 +65,7 @@ Client.prototype.start = function() {
 
 Client.prototype.stop = function() {
 	this.canConnect = false;
-	this.ws.close();
+	if (this.socket) this.socket.disconnect();
 };
 
 Client.prototype.connect = function() {
@@ -73,91 +73,75 @@ Client.prototype.connect = function() {
 		return;
 	this.emit("status", "Connecting...");
 	
-	// Determine if we need wss:// based on page protocol
-	let wsUri = this.uri;
-	if (typeof window !== 'undefined') {
-		if (wsUri.startsWith('ws://')) {
-			wsUri = wsUri.replace('ws://', 'wss://');
-		}
-	}
-	
-	const wsOptions = {
-		...this.options,
-		origin: "https://luck-production.up.railway.app",
-		perMessageDeflate: false,
-		maxPayload: 100 * 1024 * 1024 // 100MB
-	};
-	
-	if(typeof module !== "undefined") {
-		// nodejsicle
-		this.ws = new WebSocket(wsUri, wsOptions);
-	} else {
-		// browseroni
-		this.ws = new WebSocket(wsUri);
-	}
-	
-	var self = this;
-	this.ws.addEventListener("close", function(evt) {
-		self.user = undefined;
-		self.participantId = undefined;
-		self.channel = undefined;
-		self.setParticipants([]);
-		clearInterval(self.pingInterval);
-		clearInterval(self.noteFlushInterval);
-
-		self.emit("disconnect");
-		self.emit("status", "Offline mode");
-
-		// Improved reconnection logic
-		if(self.connectionTime) {
-			self.connectionTime = undefined;
-			self.connectionAttempts = 0;
-		} else {
-			++self.connectionAttempts;
-		}
+	try {
+		this.socket = io(this.uri, this.options);
 		
-		if (self.options.reconnection && self.connectionAttempts < (self.options.reconnectionAttempts || 5)) {
-			const delay = Math.min(
-				(self.options.reconnectionDelay || 1000) * Math.pow(1.5, self.connectionAttempts),
-				self.options.reconnectionDelayMax || 5000
-			);
-			setTimeout(self.connect.bind(self), delay);
-		} else {
-			self.emit("status", "Connection failed. Please refresh the page.");
-		}
-	});
-	this.ws.addEventListener("error", function() {
-		console.trace(arguments);
-		self.ws.close(); // self.ws.emit("close");
-	});
-	this.ws.addEventListener("open", function(evt) {
-		self.connectionTime = Date.now();
-		self.sendArray([{m: "hi"}]);
-		self.pingInterval = setInterval(function() {
-			self.sendArray([{m: "t", e: Date.now()}]);
-		}, 20000);
-		//self.sendArray([{m: "t", e: Date.now()}]);
-		self.noteBuffer = [];
-		self.noteBufferTime = 0;
-		self.noteFlushInterval = setInterval(function() {
-			if(self.noteBufferTime && self.noteBuffer.length > 0) {
-				self.sendArray([{m: "n", t: self.noteBufferTime + self.serverTimeOffset, n: self.noteBuffer}]);
-				self.noteBufferTime = 0;
-				self.noteBuffer = [];
-			}
-		}, 200);
+		var self = this;
+		this.socket.on("connect", function() {
+			self.connectionTime = Date.now();
+			self.sendArray([{m: "hi"}]);
+			self.pingInterval = setInterval(function() {
+				self.sendArray([{m: "t", e: Date.now()}]);
+			}, 20000);
+			self.noteBuffer = [];
+			self.noteBufferTime = 0;
+			self.noteFlushInterval = setInterval(function() {
+				if(self.noteBufferTime && self.noteBuffer.length > 0) {
+					self.sendArray([{m: "n", t: self.noteBufferTime + self.serverTimeOffset, n: self.noteBuffer}]);
+					self.noteBufferTime = 0;
+					self.noteBuffer = [];
+				}
+			}, 200);
 
-		self.emit("connect");
-		self.emit("status", "Joining channel...");
-	});
-	this.ws.addEventListener("message", function(evt) {
-		var transmission = JSON.parse(evt.data);
-		// console.log(transmission);
-		for(var i = 0; i < transmission.length; i++) {
-			var msg = transmission[i];
-			self.emit(msg.m, msg);
-		}
-	});
+			self.emit("connect");
+			self.emit("status", "Joining channel...");
+		});
+
+		this.socket.on("disconnect", function() {
+			self.user = undefined;
+			self.participantId = undefined;
+			self.channel = undefined;
+			self.setParticipants([]);
+			clearInterval(self.pingInterval);
+			clearInterval(self.noteFlushInterval);
+
+			self.emit("disconnect");
+			self.emit("status", "Offline mode");
+
+			if(self.connectionTime) {
+				self.connectionTime = undefined;
+				self.connectionAttempts = 0;
+			} else {
+				++self.connectionAttempts;
+			}
+		});
+
+		this.socket.on("error", function(err) {
+			console.error("Socket.IO Error:", err);
+			self.emit("error", err);
+		});
+
+		this.socket.on("message", function(msg) {
+			if (typeof msg === 'string') {
+				try {
+					msg = JSON.parse(msg);
+				} catch(e) {
+					console.error("Failed to parse message:", msg);
+					return;
+				}
+			}
+			if (Array.isArray(msg)) {
+				for(var i = 0; i < msg.length; i++) {
+					self.emit(msg[i].m, msg[i]);
+				}
+			} else if (msg.m) {
+				self.emit(msg.m, msg);
+			}
+		});
+	} catch (err) {
+		console.error("Connection error:", err);
+		this.emit("error", err);
+	}
 };
 
 Client.prototype.bindEventListeners = function() {
@@ -193,11 +177,11 @@ Client.prototype.bindEventListeners = function() {
 };
 
 Client.prototype.send = function(raw) {
-	if(this.isConnected()) this.ws.send(raw);
+	if(this.isConnected()) this.socket.send(raw);
 };
 
 Client.prototype.sendArray = function(arr) {
-	this.send(JSON.stringify(arr));
+	if(this.isConnected()) this.socket.send(JSON.stringify(arr));
 };
 
 Client.prototype.setChannel = function(id, set) {

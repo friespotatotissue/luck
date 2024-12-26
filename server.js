@@ -24,22 +24,16 @@ const io = require('socket.io')(httpServer, {
     maxHttpBufferSize: 1e8,
     allowUpgrades: true,
     perMessageDeflate: false,
-    httpCompression: true,
-    cookie: {
-        name: "io",
-        httpOnly: true,
-        secure: true
-    }
+    cookie: false // Disable Socket.IO cookie to prevent conflicts
 });
 
-// Enable CORS for Express with specific WebSocket headers
+// Enable CORS for Express
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
     res.header('Access-Control-Allow-Credentials', 'true');
     
-    // Handle preflight requests
     if (req.method === 'OPTIONS') {
         res.sendStatus(200);
     } else {
@@ -47,80 +41,74 @@ app.use((req, res, next) => {
     }
 });
 
-// Serve static files with proper MIME types and caching
+// Serve static files
 app.use(express.static(__dirname, {
     setHeaders: (res, path) => {
-        // Set proper MIME types for audio files
         if (path.endsWith('.mp3')) {
             res.set('Content-Type', 'audio/mpeg');
         }
-        // Enable caching for static assets
         if (path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.png') || path.endsWith('.mp3')) {
-            res.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+            res.set('Cache-Control', 'public, max-age=31536000');
         }
     }
 }));
 
-// Serve index.html for all routes to support client-side routing
+// Serve index.html for all routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Socket.IO connection handling with error logging
+// Socket.IO connection handling with improved error handling
 io.on('connection', (socket) => {
-    console.log('A user connected to Socket.IO', socket.id);
+    console.log('Client connected:', socket.id);
 
-    // Handle piano key press
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.log('Client disconnected:', socket.id, reason);
+    });
+
+    // Handle piano events
     socket.on('keyPress', (data) => {
-        // Broadcast the key press to all other clients
         socket.broadcast.emit('keyPressed', data);
     });
 
-    // Handle piano key release
     socket.on('keyRelease', (data) => {
-        // Broadcast the key release to all other clients
         socket.broadcast.emit('keyReleased', data);
     });
 
-    // Handle sustain pedal
     socket.on('sustain', (isPressed) => {
         socket.broadcast.emit('sustainChange', isPressed);
     });
 
-    // Handle chat messages
     socket.on('chat', (data) => {
         socket.broadcast.emit('chatMessage', data);
     });
 
-    // Handle cursor movement
     socket.on('cursor', (data) => {
         socket.broadcast.emit('cursorMove', data);
     });
-
-    socket.on('error', (error) => {
-        console.error('Socket.IO Error:', error);
-    });
-
-    socket.on('disconnect', (reason) => {
-        console.log('User disconnected from Socket.IO', socket.id, reason);
-    });
 });
 
-// Add error handling for the HTTP server
+// Error handling for the HTTP server
 httpServer.on('error', (error) => {
     console.error('HTTP Server Error:', error);
 });
 
-// Add upgrade event handling for WebSocket
+// Improved WebSocket upgrade handling
 httpServer.on('upgrade', (request, socket, head) => {
     console.log('WebSocket upgrade request received');
+    socket.on('error', (error) => {
+        console.error('WebSocket upgrade error:', error);
+    });
 });
 
 const PORT = process.env.PORT || 8080;
 
-// Start the server with error handling
+// Start server with error handling
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Server root directory: ${__dirname}`);
-    console.log(`WebSocket server is ready for WSS connections`);
 }); 
