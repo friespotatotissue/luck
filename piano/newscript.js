@@ -1198,10 +1198,10 @@ Rect.prototype.contains = function(x, y) {
 		transports: ['websocket']
 	});
 
-	// Enhanced connection and channel joining logic
+	// Enhanced channel joining logic
 	(function() {
 		var channelJoinAttempts = 0;
-		var maxChannelJoinAttempts = 3;
+		var maxChannelJoinAttempts = 5;
 		var channelJoinTimeout;
 
 		function resetChannelJoin() {
@@ -1214,7 +1214,21 @@ Rect.prototype.contains = function(x, y) {
 		function attemptChannelJoin() {
 			if (channelJoinAttempts >= maxChannelJoinAttempts) {
 				console.error('Failed to join channel after multiple attempts');
+				
+				// Detailed diagnostic information
+				console.log('Diagnostic Information:');
+				console.log('Current Connection State:', {
+					isConnected: gClient.isConnected(),
+					isConnecting: gClient.isConnecting(),
+					channel: gClient.channel,
+					desiredChannelId: gClient.desiredChannelId
+				});
+
+				// Trigger a full reset
 				gClient.stop();
+				
+				// Optional: Fallback to a default channel or show an error
+				gClient.setChannel('lobby');
 				return;
 			}
 
@@ -1226,15 +1240,27 @@ Rect.prototype.contains = function(x, y) {
 				clearTimeout(channelJoinTimeout);
 			}
 
-			// Set a timeout for channel joining
+			// Set a more generous timeout for channel joining
 			channelJoinTimeout = setTimeout(() => {
 				console.warn('Channel join timeout');
+				
+				// Log additional connection details
+				console.log('Connection Timeout Details:', {
+					socketConnected: gClient.socket && gClient.socket.connected,
+					socketConnecting: gClient.socket && gClient.socket.connecting,
+					currentTime: new Date().toISOString()
+				});
+
 				gClient.stop();
 				attemptChannelJoin();
-			}, 10000);
+			}, 15000); // Increased to 15 seconds
 
-			// Attempt to set channel
-			gClient.setChannel(channel_id);
+			// Attempt to set channel with additional logging
+			try {
+				gClient.setChannel(channel_id);
+			} catch (error) {
+				console.error('Error setting channel:', error);
+			}
 		}
 
 		// Enhanced connection event handlers
@@ -1246,6 +1272,14 @@ Rect.prototype.contains = function(x, y) {
 
 		gClient.on('connect_error', function(error) {
 			console.error('Socket.IO connection error:', error);
+			
+			// Log detailed error information
+			console.log('Connection Error Details:', {
+				errorMessage: error.message,
+				errorName: error.name,
+				errorStack: error.stack
+			});
+
 			gClient.stop();
 		});
 
@@ -1270,9 +1304,15 @@ Rect.prototype.contains = function(x, y) {
 			resetChannelJoin();
 		});
 
-		// Add channel join event handler
+		// Add channel join event handler with more detailed logging
 		gClient.on('ch', function(msg) {
 			console.log('Successfully joined channel:', msg.ch._id);
+			console.log('Channel Details:', {
+				channelId: msg.ch._id,
+				channelSettings: msg.ch.settings,
+				participantId: msg.p
+			});
+
 			if (channelJoinTimeout) {
 				clearTimeout(channelJoinTimeout);
 			}
