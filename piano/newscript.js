@@ -1178,11 +1178,12 @@ Rect.prototype.contains = function(x, y) {
 	if(channel_id == "") channel_id = "lobby";
 
 	var wssport = window.location.hostname == "luck-production.up.railway.app" ? 443 : 8080;
-	var gClient = new Client("wss://" + window.location.hostname + "/socket.io/", {
+	
+	// Ensure gClient is globally accessible
+	window.gClient = new Client("wss://" + window.location.hostname + "/socket.io/", {
 		path: '/socket.io/',
-		transports: ['websocket', 'polling'],
-		upgrade: true,
-		rememberUpgrade: true,
+		transports: ['websocket'], // Prioritize WebSocket
+		upgrade: false, // Disable upgrade to prevent falling back to polling
 		secure: true,
 		rejectUnauthorized: false,
 		reconnection: true,
@@ -1192,8 +1193,53 @@ Rect.prototype.contains = function(x, y) {
 		timeout: 20000,
 		autoConnect: true
 	});
+	gClient = window.gClient; // Ensure it's also accessible without window prefix
 	gClient.setChannel(channel_id);
 	gClient.start();
+
+	// Offline mode handling
+	function setupOfflineMode() {
+		function updateOnlineStatus() {
+			console.log('Checking online status'); // Debugging log
+			if (!navigator.onLine) {
+				document.body.classList.add('offline');
+				var statusDiv = document.getElementById('offline-status');
+				if (!statusDiv) {
+					statusDiv = document.createElement('div');
+					statusDiv.id = 'offline-status';
+					statusDiv.textContent = 'Offline mode';
+					document.body.appendChild(statusDiv);
+				}
+				console.log('Offline mode activated');
+			} else {
+				document.body.classList.remove('offline');
+				var statusDiv = document.getElementById('offline-status');
+				if (statusDiv) {
+					statusDiv.remove();
+				}
+				
+				// Try to reconnect when we come back online
+				if (gClient && !gClient.isConnected() && !gClient.isConnecting()) {
+					console.log("Attempting to reconnect...");
+					gClient.stop(); // Clean up any existing connection
+					gClient.start(); // Start fresh connection
+				}
+			}
+		}
+
+		// Set up event listeners
+		window.addEventListener('online', updateOnlineStatus);
+		window.addEventListener('offline', updateOnlineStatus);
+		
+		// Initial check
+		updateOnlineStatus();
+	}
+
+	// Remove the previous offline mode handling
+	// Ensure offline mode is set up after a short delay to allow gClient to initialize
+	$(document).ready(function() {
+		setTimeout(setupOfflineMode, 1000);
+	});
 
 	// Setting status
 	(function() {
