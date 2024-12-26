@@ -2,14 +2,36 @@ const express = require('express');
 const path = require('path');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+        allowedHeaders: ["*"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
 const WebSocket = require('ws');
 
 // Create WebSocket server
-const wss = new WebSocket.Server({ server: http });
+const wss = new WebSocket.Server({ 
+    server: http,
+    perMessageDeflate: false
+});
 
 // Store connected clients
 const clients = new Map();
+
+// Enable CORS for Express
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
 
 // Serve static files with proper MIME types and caching
 app.use(express.static(__dirname, {
@@ -59,7 +81,7 @@ wss.on('connection', (ws) => {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-    console.log('A user connected to Socket.IO');
+    console.log('A user connected to Socket.IO', socket.id);
 
     // Handle piano key press
     socket.on('keyPress', (data) => {
@@ -88,8 +110,12 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('cursorMove', data);
     });
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected from Socket.IO');
+    socket.on('error', (error) => {
+        console.error('Socket.IO Error:', error);
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.log('User disconnected from Socket.IO', socket.id, reason);
     });
 });
 
