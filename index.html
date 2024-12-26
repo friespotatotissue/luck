@@ -117,6 +117,18 @@
         <!-- <script src="/piano/script.js"></script> -->
         <!-- <script src="/piano/eyerape.js"></script> -->
         <script src="/socket.io/socket.io.js"></script>
+        <script>
+            // Initialize AudioContext after user interaction
+            document.addEventListener('click', initAudioContext, { once: true });
+            document.addEventListener('keydown', initAudioContext, { once: true });
+            document.addEventListener('touchstart', initAudioContext, { once: true });
+
+            function initAudioContext() {
+                if (window.AudioContext) {
+                    window.audioContext = new AudioContext();
+                }
+            }
+        </script>
         <script src="piano/newscript.js"></script>
     </body>
 </html>
